@@ -1,0 +1,92 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+venv313/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/*.log
+logs/*.json
+
+# Model files (too large for git)
+weights/*.pt
+weights/*.onnx
+!weights/.gitkeep
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Screenshots and recordings
+screenshots/
+recordings/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.avi
+
+# Configuration (may contain sensitive info)
+config_local.yaml
+secrets.yaml
+
+# Charts and generated files
+charts/
+reports/
+*.pdf
+*.xlsx
+
+# System files
+.pytest_cache/
+.coverage
+.nyc_output
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/ 

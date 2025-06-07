@@ -1,0 +1,39 @@
+# MapleStory Worlds 自動化系統依賴包
+# 安裝命令: pip install -r requirements.txt
+
+# 核心深度學習框架
+ultralytics>=8.0.0          # YOLO v8 模型支持
+torch>=2.0.0               # PyTorch 深度學習框架
+torchvision>=0.15.0        # PyTorch 視覺工具
+
+# 電腦視覺和圖像處理
+opencv-python>=4.8.0       # OpenCV 電腦視覺
+Pillow>=10.0.0             # 圖像處理
+numpy>=1.24.0              # 數值計算
+
+# 系統自動化
+pyautogui>=0.9.54          # GUI 自動化
+psutil>=5.9.0              # 系統進程監控
+mss>=9.0.0                 # 高性能螢幕截圖
+
+# 配置和數據處理
+PyYAML>=6.0                # YAML 配置文件
+pandas>=2.0.0              # 數據分析
+matplotlib>=3.7.0          # 圖表生成
+seaborn>=0.12.0            # 統計圖表
+
+# 系統工具
+pathlib2>=2.3.7           # 路徑處理 (Python < 3.4)
+dataclasses>=0.6; python_version < '3.7'  # 數據類支持
+
+# 日誌和調試
+colorlog>=6.7.0            # 彩色日誌輸出
+tqdm>=4.65.0               # 進度條
+
+# 網絡和通信 (可選)
+requests>=2.31.0           # HTTP 請求
+websockets>=11.0           # WebSocket 支持
+
+# 性能優化
+numba>=0.58.0              # JIT 編譯加速
+joblib>=1.3.0              # 並行處理 
