@@ -1,4 +1,4 @@
-# 🍁 MapleStory Worlds 自動化系統 v2.0
+# 🍁 MapleStory Worlds (Artale) 自動化系統 v2.0
 
 一個功能完整的 MapleStory Worlds 遊戲自動化系統，使用 YOLO 深度學習模型進行智能物件偵測和自動化操作。
 
