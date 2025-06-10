@@ -44,11 +44,36 @@ def check_config_file():
                 missing_sections.append(section)
         
         if missing_sections:
-            print(f"⚠️ 配置文件缺少部分: {missing_sections}")
-            return False
+            print(f"⚠️ 配置文件缺少主要部分: {missing_sections}")
+            # Do not return False immediately, proceed to check optional sections like 'performance'
+            # but note that essential parts are missing for overall check.
+            essential_ok = False
         else:
-            print("✅ 配置文件結構完整")
-            return True
+            print("✅ 配置文件主要結構完整 (model, window, controls, automation, safety).")
+            essential_ok = True
+
+        # Check for optional 'performance' section and its keys
+        if 'performance' in config:
+            print("✅ 'performance' section found in config.")
+            performance_keys = ['capture_width', 'capture_height', 'model_inference_size']
+            missing_perf_keys = []
+            present_perf_keys = []
+            for p_key in performance_keys:
+                if p_key not in config['performance']:
+                    missing_perf_keys.append(p_key)
+                else:
+                    present_perf_keys.append(p_key)
+
+            if present_perf_keys:
+                 print(f"✅ Found performance keys: {present_perf_keys} in 'performance' section.")
+            if not missing_perf_keys:
+                print("✅ All optional performance keys (capture_width, capture_height, model_inference_size) are present in 'performance' section.")
+            else:
+                print(f"⚠️ Optional: 'performance' section is missing keys: {missing_perf_keys}. These allow for further performance tuning.")
+        else:
+            print("⚠️ Optional: 'performance' section not found in config. This section allows for performance tuning (e.g., capture_width, capture_height, model_inference_size).")
+
+        return essential_ok # Only return True if essential sections were okay. Warnings for optional sections are informational.
     
     except Exception as e:
         print(f"❌ 配置文件格式錯誤: {e}")
