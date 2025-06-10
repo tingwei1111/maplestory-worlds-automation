@@ -7,23 +7,18 @@ MapleStory Worlds 優化自動化系統
 作者: AI Assistant
 """
 
-import cv2
-import mss
-import numpy as np
-import pyautogui
-import time
 import os
 import sys
-import logging
+import time
+import logging # Standard library import
 import yaml
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
-from ultralytics import YOLO
 
-# 配置日誌
+# --- Logging Configuration (early for use by other imports) ---
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -32,8 +27,36 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__) # logger is now defined
 
+# --- Optional PyAutoGUI Import ---
+try:
+    import pyautogui
+    # Configure pyautogui ONLY if display is available
+    if 'DISPLAY' in os.environ or 'WAYLAND_DISPLAY' in os.environ:
+        # Assuming safety.enable_failsafe from config would be True by default
+        # and pyautogui.PAUSE = 0.05 are desired defaults.
+        # These might need to be set later if they depend on ConfigManager.
+        # For now, only basic import is attempted.
+        # pyautogui.FAILSAFE = True # This would be set in OptimizedMapleBot init based on config
+        # pyautogui.PAUSE = 0.05    # This would be set in OptimizedMapleBot init
+        logger.info("PyAutoGUI imported. Configuration will be handled by OptimizedMapleBot.")
+    else:
+        logger.warning("No DISPLAY or WAYLAND_DISPLAY found. PyAutoGUI imported but may not function for screen interactions.")
+except ImportError:
+    logger.warning("PyAutoGUI not found. GUI automation features will be disabled.")
+    pyautogui = None # Define pyautogui as None if import fails
+except Exception as e:
+    logger.warning(f"Error importing PyAutoGUI: {e}. GUI automation features will be disabled.")
+    pyautogui = None
+
+# --- Other Core Imports ---
+import cv2 # Ensure cv2 is imported
+import mss
+import numpy as np
+from ultralytics import YOLO # Moved here as it's a major dependency
+
+# --- Start of Script Classes ---
 @dataclass
 class Detection:
     """偵測結果數據類"""
@@ -89,6 +112,11 @@ class ConfigManager:
             'safety': {
                 'enable_failsafe': True,
                 'max_runtime_hours': 2
+            },
+            'performance': { # Added performance section
+                'capture_width': None,
+                'capture_height': None,
+                'model_inference_size': None # Added model_inference_size
             }
         }
     
@@ -148,6 +176,11 @@ class OptimizedMapleBot:
         self.action_delay = self.config.get('automation.action_delay', 0.3)
         self.scan_interval = self.config.get('automation.scan_interval', 0.1)
         self.max_runtime = self.config.get('safety.max_runtime_hours', 2) * 3600
+
+        # Load performance settings
+        self.capture_width = self.config.get('performance.capture_width')
+        self.capture_height = self.config.get('performance.capture_height')
+        self.model_inference_size = self.config.get('performance.model_inference_size')
         
         # 統計數據
         self.stats = {
@@ -168,10 +201,7 @@ class OptimizedMapleBot:
         self.search_direction = 1  # 1 for right, -1 for left
         self.search_moves = 0
         
-        # 設定 PyAutoGUI
-        if self.config.get('safety.enable_failsafe', True):
-            pyautogui.FAILSAFE = True
-        pyautogui.PAUSE = 0.05  # 減少暫停時間提升性能
+        # PyAutoGUI setup is moved to the global import block
         
         logger.info("OptimizedMapleBot 初始化完成")
         self._load_model()
@@ -203,6 +233,15 @@ class OptimizedMapleBot:
             with mss.mss() as sct:
                 screenshot = sct.grab(self.monitor)
                 img = np.array(screenshot)
+
+                # Resize if capture dimensions are specified
+                if self.capture_width and self.capture_height:
+                    try:
+                        img = cv2.resize(img, (self.capture_width, self.capture_height), interpolation=cv2.INTER_AREA)
+                    except Exception as resize_e:
+                        logger.error(f"螢幕截圖縮放失敗: {resize_e}")
+                        # Proceed with original image if resize fails
+
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
                 return img
         except Exception as e:
@@ -217,7 +256,10 @@ class OptimizedMapleBot:
         start_time = time.time()
         
         try:
-            results = self.model(img, verbose=False)
+            if self.model_inference_size:
+                results = self.model(img, imgsz=self.model_inference_size, verbose=False)
+            else:
+                results = self.model(img, verbose=False)
             detections = []
             
             # 計算畫面中心點
@@ -289,17 +331,20 @@ class OptimizedMapleBot:
                 # 檢查是否啟用攻擊動作
                 mob_action = self.config.get('detection_behavior.mob.action', 'attack')
                 if mob_action == 'attack':
-                    pyautogui.moveTo(abs_x, abs_y, duration=0.1)
-                    attack_method = self.config.get('controls.attack_method', 'click')
-                    if attack_method == 'key':
-                        attack_key = self.config.get('controls.attack_key', 'z')
-                        pyautogui.press(attack_key)
+                    if pyautogui: # Check if pyautogui was imported successfully
+                        pyautogui.moveTo(abs_x, abs_y, duration=0.1)
+                        attack_method = self.config.get('controls.attack_method', 'click')
+                        if attack_method == 'key':
+                            attack_key = self.config.get('controls.attack_key', 'z')
+                            pyautogui.press(attack_key)
+                        else:
+                            pyautogui.click()
+                        logger.info(f"⚔️ 攻擊怪物 (信賴度: {detection.confidence:.2f})")
+                        self.stats['mobs_attacked'] += 1
+                        action_performed = True
+                        time.sleep(self.config.get('detection_behavior.mob.attack_delay', 0.5))
                     else:
-                        pyautogui.click()
-                    logger.info(f"⚔️ 攻擊怪物 (信賴度: {detection.confidence:.2f})")
-                    self.stats['mobs_attacked'] += 1
-                    action_performed = True
-                    time.sleep(self.config.get('detection_behavior.mob.attack_delay', 0.5))
+                        logger.warning("PyAutoGUI not available, cannot perform attack.")
                 else:
                     logger.info(f"👁️ 偵測到怪物 (信賴度: {detection.confidence:.2f}) - 僅記錄")
                 
@@ -380,10 +425,13 @@ class OptimizedMapleBot:
         """水平搜尋移動"""
         move_key = self.config.get('controls.movement_keys.right' if self.search_direction > 0 else 'controls.movement_keys.left', 'right' if self.search_direction > 0 else 'left')
         
-        # 按住移動鍵一段時間
-        pyautogui.keyDown(move_key)
-        time.sleep(0.3)
-        pyautogui.keyUp(move_key)
+        if pyautogui: # Check if pyautogui was imported successfully
+            # 按住移動鍵一段時間
+            pyautogui.keyDown(move_key)
+            time.sleep(0.3)
+            pyautogui.keyUp(move_key)
+        else:
+            logger.warning("PyAutoGUI not available, cannot perform horizontal search movement.")
         
         self.search_moves += 1
         
@@ -395,18 +443,21 @@ class OptimizedMapleBot:
     
     def _vertical_search(self, move_distance: int):
         """垂直搜尋移動（跳躍和下降）"""
-        if self.search_moves % 2 == 0:
-            # 跳躍
-            jump_key = self.config.get('controls.movement_keys.jump', 'x')
-            pyautogui.press(jump_key)
-            logger.info("⬆️ 跳躍搜尋")
+        if pyautogui: # Check if pyautogui was imported successfully
+            if self.search_moves % 2 == 0:
+                # 跳躍
+                jump_key = self.config.get('controls.movement_keys.jump', 'x')
+                pyautogui.press(jump_key)
+                logger.info("⬆️ 跳躍搜尋")
+            else:
+                # 向下移動
+                down_key = self.config.get('controls.movement_keys.down', 'down')
+                pyautogui.keyDown(down_key)
+                time.sleep(0.2)
+                pyautogui.keyUp(down_key)
+                logger.info("⬇️ 向下搜尋")
         else:
-            # 向下移動
-            down_key = self.config.get('controls.movement_keys.down', 'down')
-            pyautogui.keyDown(down_key)
-            time.sleep(0.2)
-            pyautogui.keyUp(down_key)
-            logger.info("⬇️ 向下搜尋")
+            logger.warning("PyAutoGUI not available, cannot perform vertical search movement.")
         
         self.search_moves += 1
     
@@ -417,16 +468,19 @@ class OptimizedMapleBot:
         movements = ['left', 'right', 'jump']
         chosen_movement = random.choice(movements)
         
-        if chosen_movement == 'jump':
-            jump_key = self.config.get('controls.movement_keys.jump', 'x')
-            pyautogui.press(jump_key)
-            logger.info("🎲 隨機跳躍")
+        if pyautogui: # Check if pyautogui was imported successfully
+            if chosen_movement == 'jump':
+                jump_key = self.config.get('controls.movement_keys.jump', 'x')
+                pyautogui.press(jump_key)
+                logger.info("🎲 隨機跳躍")
+            else:
+                move_key = self.config.get(f'controls.movement_keys.{chosen_movement}', chosen_movement)
+                pyautogui.keyDown(move_key)
+                time.sleep(0.3)
+                pyautogui.keyUp(move_key)
+                logger.info(f"🎲 隨機移動: {chosen_movement}")
         else:
-            move_key = self.config.get(f'controls.movement_keys.{chosen_movement}', chosen_movement)
-            pyautogui.keyDown(move_key)
-            time.sleep(0.3)
-            pyautogui.keyUp(move_key)
-            logger.info(f"🎲 隨機移動: {chosen_movement}")
+            logger.warning("PyAutoGUI not available, cannot perform random search movement.")
         
         self.search_moves += 1
     
@@ -452,16 +506,19 @@ class OptimizedMapleBot:
         try:
             logger.info("🏠 返回原始位置...")
             # 簡單的返回邏輯：向相反方向移動
-            if self.search_direction > 0:
-                # 如果最後是向右移動，現在向左移動
-                move_key = self.config.get('controls.movement_keys.left', 'left')
+            if pyautogui: # Check if pyautogui was imported successfully
+                if self.search_direction > 0:
+                    # 如果最後是向右移動，現在向左移動
+                    move_key = self.config.get('controls.movement_keys.left', 'left')
+                else:
+                    # 如果最後是向左移動，現在向右移動
+                    move_key = self.config.get('controls.movement_keys.right', 'right')
+
+                pyautogui.keyDown(move_key)
+                time.sleep(0.5)  # 移動時間稍長一些
+                pyautogui.keyUp(move_key)
             else:
-                # 如果最後是向左移動，現在向右移動
-                move_key = self.config.get('controls.movement_keys.right', 'right')
-            
-            pyautogui.keyDown(move_key)
-            time.sleep(0.5)  # 移動時間稍長一些
-            pyautogui.keyUp(move_key)
+                logger.warning("PyAutoGUI not available, cannot perform return to center movement.")
             
         except Exception as e:
             logger.error(f"返回中心失敗: {e}")
@@ -785,4 +842,59 @@ def _show_config(config: ConfigManager):
     print(f"  互動鍵: {config.get('controls.interact_key')}")
 
 if __name__ == "__main__":
-    main() 
+    # --- Start of modification for direct profiling ---
+    logger.info("Attempting direct call to test_detection for profiling.")
+
+    # Find model
+    model_path_to_use = None
+    weights_dir = Path("weights")
+    preferred_model_path = weights_dir / "best.pt"
+
+    if preferred_model_path.exists():
+        model_path_to_use = str(preferred_model_path)
+        logger.info(f"Using preferred model: {model_path_to_use}")
+    else:
+        logger.warning(f"Preferred model {preferred_model_path} not found. Searching for other .pt files...")
+        pt_files = list(weights_dir.glob("*.pt"))
+        if pt_files:
+            model_path_to_use = str(pt_files[0])
+            logger.info(f"Found alternative model: {model_path_to_use}")
+        else:
+            logger.error("No .pt model files found in the 'weights' directory.")
+            sys.stderr.write("Error: No model file found in weights/. Exiting.\n")
+            sys.exit(1) # Exit if no model is found
+
+    # Ensure config reflects the chosen model
+    # We need to write this to config.yaml so OptimizedMapleBot picks it up
+    # as it creates its own ConfigManager instance.
+    temp_config_manager = ConfigManager() # Loads existing or default
+    temp_config_manager.config['model']['default_path'] = model_path_to_use
+
+    try:
+        with open(temp_config_manager.config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(temp_config_manager.config, f)
+        logger.info(f"Temporarily updated {temp_config_manager.config_path} with model path: {model_path_to_use}")
+    except Exception as e:
+        logger.error(f"Failed to write temporary config: {e}")
+        sys.stderr.write(f"Error: Failed to write temporary config for model path. Exiting.\n")
+        sys.exit(1)
+
+    # Instantiate the bot - it will load the updated config.yaml
+    bot = OptimizedMapleBot() # Uses its own ConfigManager, which loads from config.yaml
+
+    if bot.model is None:
+        # This check is important because _load_model might fail even if path is set
+        logger.error("Bot model failed to load even after config update. Check model integrity and paths.")
+        sys.stderr.write("Error: Bot model failed to load. Exiting.\n")
+        sys.exit(1)
+
+    logger.info("Calling test_detection()...")
+    try:
+        bot.test_detection()
+    except Exception as e:
+        logger.error(f"Error during test_detection: {e}", exc_info=True)
+        sys.stderr.write(f"Error during test_detection: {e}\n")
+        sys.exit(1)
+    logger.info("test_detection() call finished.")
+    # --- End of modification ---
+    # main() # Original main call is commented out for profiling
