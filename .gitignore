@@ -50,9 +50,7 @@ Thumbs.db
 logs/*.log
 logs/*.json
 
-# Model files (too large for git)
-weights/*.pt
-weights/*.onnx
+# Model files (now handled by Git LFS)
 !weights/.gitkeep
 
 # Temporary files
