@@ -340,53 +340,53 @@ def show_help():
     
     print(help_text)
 
-def main():
-    """主程序"""
-    os.system('clear' if os.name == 'posix' else 'cls')  # 清除終端
-    
+# Conditional import for the GUI part
+try:
+    from gui import App
+    tkinter_available = True
+except ImportError:
+    tkinter_available = False
+except Exception as e: # Catch other potential errors during gui import (like TclError if display not found)
+    tkinter_available = False
+    print(f"⚠️ 無法導入 GUI 模組 (可能是 gui.py 遺失或 Tkinter 環境問題): {e}")
+
+
+def main_cli():
+    """CLI 主程序"""
+    os.system('clear' if os.name == 'posix' else 'cls')
     while True:
         show_menu()
-        
         try:
             choice = input("請選擇功能 (1-9): ").strip()
-            
             if choice == '1':
                 system_check()
-                input("\n按 Enter 鍵繼續...")
-                
             elif choice == '2':
-                run_script("auto.py", "自動化腳本")
-                
+                print("提示: 如果您想使用 GUI，請直接運行 'python start.py' 而不加 --cli 參數。")
+                run_script("auto.py", "自動化腳本 (CLI 模式)")
             elif choice == '3':
                 run_script("maple/monitor.py", "監控系統")
-                
             elif choice == '4':
                 run_script("maple/monitor_plus.py", "增強監控系統")
-                
             elif choice == '5':
                 quick_test()
-                input("\n按 Enter 鍵繼續...")
-                
             elif choice == '6':
                 install_dependencies()
-                input("\n按 Enter 鍵繼續...")
-                
             elif choice == '7':
                 open_config()
-                input("\n按 Enter 鍵繼續...")
-                
             elif choice == '8':
                 show_help()
-                input("\n按 Enter 鍵繼續...")
-                
             elif choice == '9':
                 print("\n👋 再見！")
                 break
-                
             else:
                 print("❌ 無效選擇，請重新輸入")
                 time.sleep(1)
-                
+
+            if choice not in ['9']: # Don't pause on exit
+                 input("\n按 Enter 鍵繼續...")
+                 os.system('clear' if os.name == 'posix' else 'cls')
+
+
         except KeyboardInterrupt:
             print("\n\n👋 再見！")
             break
@@ -394,5 +394,55 @@ def main():
             print(f"❌ 發生錯誤: {e}")
             input("\n按 Enter 鍵繼續...")
 
+
+def main_gui():
+    """GUI 主程序"""
+    print("🚀 正在啟動圖形使用者介面 (GUI)...")
+    if not tkinter_available:
+        print("❌ Tkinter (GUI 庫) 不可用或 gui.py 遺失。")
+        print("   請確保 Tkinter 已安裝 (例如: sudo apt-get install python3-tk) 且 gui.py 在正確的路徑。")
+        print("   將嘗試切換到命令列介面 (CLI) 模式。")
+        time.sleep(2) # Give user time to read
+        return False # Indicate GUI launch failed
+
+    print("🔍 執行 GUI 啟動前的系統檢查...")
+    # For GUI, system_check failure might be less critical than for CLI bot run,
+    # as user can fix things via UI or see logs.
+    # We'll proceed even if system_check() returns False, but print a warning.
+    if not system_check():
+        print("⚠️ 系統檢查發現一些問題。GUI 仍會嘗試啟動，但某些功能可能無法正常運作。")
+        print("   建議檢查上述日誌，並考慮從 CLI 模式運行 '系統檢查' (選項 1) 以獲取詳細信息。")
+        if input("   是否繼續啟動 GUI? (y/n, 預設 y): ").lower() == 'n':
+            return False # User chose not to proceed with GUI
+
+    try:
+        app = App()
+        app.mainloop()
+        return True # GUI launched and exited normally
+    except Exception as e:
+        print(f"❌ 啟動 GUI 時發生嚴重錯誤: {e}")
+        import traceback
+        traceback.print_exc() # Print full traceback for debugging
+        print("   請檢查錯誤訊息。如果問題持續，請嘗試使用命令列介面 (CLI) 模式。")
+        return False # Indicate GUI launch failed
+
+
+def main():
+    """程序主入口點"""
+    import argparse # Import here to keep it out of global scope if not needed for simple script runs
+    parser = argparse.ArgumentParser(description="MapleStory Worlds 自動化系統啟動器。")
+    parser.add_argument('--cli', action='store_true', help="以命令列介面 (CLI) 模式運行。")
+    args = parser.parse_args()
+
+    if args.cli:
+        print("ℹ️ 以命令列介面 (CLI) 模式運行...")
+        main_cli()
+    else:
+        if not main_gui(): # If GUI fails or user opts out
+            print("\n🔄 切換到命令列介面 (CLI) 模式...")
+            time.sleep(1) # Brief pause
+            main_cli()
+
+
 if __name__ == "__main__":
-    main() 
+    main()
