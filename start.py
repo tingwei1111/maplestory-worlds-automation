@@ -358,10 +358,10 @@ def main():
                 run_script("auto.py", "自動化腳本")
                 
             elif choice == '3':
-                run_script("maple/monitor.py", "監控系統")
+                run_script("monitoring/monitor.py", "監控系統")
                 
             elif choice == '4':
-                run_script("maple/monitor_plus.py", "增強監控系統")
+                run_script("monitoring/monitor_plus.py", "增強監控系統")
                 
             elif choice == '5':
                 quick_test()

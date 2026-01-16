@@ -163,10 +163,10 @@ def main():
     # 檢查監控系統文件
     print("\n📊 監控系統文件:")
     monitoring_files = {
-        "maple/monitor.py": "基礎監控",
-        "maple/monitor_plus.py": "增強監控",
-        "maple/quick_status.py": "快速狀態",
-        "maple/使用說明.md": "更新的使用說明"
+        "monitoring/monitor.py": "基礎監控",
+        "monitoring/monitor_plus.py": "增強監控",
+        "monitoring/quick_status.py": "快速狀態",
+        "docs/使用說明.md": "更新的使用說明"
     }
     
     for file_path, description in monitoring_files.items():

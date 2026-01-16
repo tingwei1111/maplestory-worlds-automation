@@ -4,7 +4,7 @@
 測試MapleStory Worlds監控功能
 """
 
-from monitor import MapleStoryMonitor
+from monitoring.monitor import MapleStoryMonitor
 import json
 
 def test_monitor():
