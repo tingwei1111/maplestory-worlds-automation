@@ -5,7 +5,7 @@ MapleStory Worlds 背景監控工具
 實時監控遊戲進程狀態、資源使用情況和運行時間
 """
 
-import psutil  type: ignore
+import psutil  # type: ignore
 import time
 import datetime
 import json

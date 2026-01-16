@@ -4,7 +4,7 @@
 MapleStory Worlds 快速狀態檢查
 """
 
-from monitor import MapleStoryMonitor
+from monitoring.monitor import MapleStoryMonitor
 import datetime
 
 def quick_status():
